@@ -1,0 +1,11 @@
+uvicorn
+pymongo
+fastapi
+pydantic
+python-multipart
+orjson
+bcrypt
+passlib
+PyJWT
+httpx
+motor
