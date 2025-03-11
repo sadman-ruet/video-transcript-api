@@ -9,7 +9,7 @@ client = MongoClient("mongodb://localhost:27017")
 db = client.RecSys
 userDB = db.users  # User collection
 chatDB = db.chats  # Chat collection
-
+fileDB = db.files  
 # Dependency to provide MongoDB collection (userDB)
 def get_db() -> Generator:
     try:

@@ -1,11 +1,13 @@
 uvicorn
 pymongo
 fastapi
-pydantic
+pydantic[email]
 python-multipart
 orjson
 bcrypt
 passlib
 PyJWT
 httpx
-motor
+faster_whisper
+audio_extract
+python-magic

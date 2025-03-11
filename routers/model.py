@@ -1,11 +1,13 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile, HTTPException, status
 from schemas import user
-from database import userDB, chatDB
-import torch
+from database import userDB, chatDB, fileDB
+import shutil
+import hashlib
 from faster_whisper import WhisperModel
 from audio_extract import extract_audio
+from datetime import datetime
 
-model_size = "tiny"
+model_size = "base"
 # Run on GPU with FP16
 model = WhisperModel(model_size, device="cuda", compute_type="float16")
 
@@ -15,49 +17,55 @@ router = APIRouter(
     tags=["Model"],
     prefix="/model"
 )
-API_KEY =""
+
+API_KEY = ""
+
 @router.post('/{GOOGLE_API_KEY}')
 def initializeLLM(GOOGLE_API_KEY: str):
+    global API_KEY
     API_KEY = GOOGLE_API_KEY
     return {
         "API": GOOGLE_API_KEY,
-    }
+    }, status.HTTP_200_OK  # Returning 200 OK
 
 @router.get('/')
-def initializeLLM():
+def getAPIKey():
+    if not API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not set"
+        )
     return {
         "API": API_KEY,
-    }
+    }, status.HTTP_200_OK  # Returning 200 OK
 
 @router.post('/transcribe/{audioUrl}')
 def transcribe(audioUrl: str):
-    segments, info = model.transcribe(
-        audioUrl,
-        multilingual=True,
-        task="translate",
-    )
+    try:
+        segments, info = model.transcribe(
+            audioUrl,
+            multilingual=True,
+            task="translate",
+        )
 
-    docs = " "
+        docs = " "
 
-    for segment in segments:
-        docs += segment.text
+        for segment in segments:
+            docs += segment.text
 
-    result = {
-        "response": docs,
-        "response_info": {
-            "predicted_language":info.language,
-            "predicted_language_probability":info.language_probability
+        result = {
+            "response": docs,
+            "response_info": {
+                "predicted_language": info.language,
+                "predicted_language_probability": info.language_probability
+            }
         }
-    }
-    chatDB.insert_one(result)
-    return result
+        chatDB.insert_one(result)
+        return result, status.HTTP_200_OK  # Return 200 OK for successful transcription
 
-@router.post('/videotoaudio/{videoUrl}')
-def convertVideoToAudio(videoUrl: str):
-    output_path = r"Audios\bangla_audio.mp3"
-    extract_audio(input_path=videoUrl, output_path=output_path)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error in transcription: {str(e)}"
+        )
 
-    return {
-        "Audio": output_path
-    }
-    
