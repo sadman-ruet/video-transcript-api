@@ -11,3 +11,7 @@ httpx
 faster_whisper
 audio_extract
 python-magic
+langchain_google_genai
+langchain-community
+docarray
+
