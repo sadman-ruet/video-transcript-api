@@ -1,0 +1,59 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+input[type="file"] {
+    margin-bottom: 10px;
+}
+
+.file-info {
+    margin-top: 20px;
+}
+
+.file-info p {
+    margin: 5px 0;
+}
+
+.file-list {
+    margin-top: 20px;
+}
+
+.file-list ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.file-list li {
+    margin: 5px 0;
+}
+.upload-btn{
+    margin-top:5px;
+    cursor: pointer;
+}
+
+.delete-btn, .download-btn, .transcribe-btn {
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.delete-btn:hover, .download-btn:hover, .transcribe-btn:hover {
+    text-decoration: underline;
+}
+
+.transcription-box {
+    border: 1px solid black;
+    border-radius: 5px;
+
+    background-color: aqua;
+    padding: 10px;
+    width: auto;
+    height: auto;
+    font-family: monospace;
+    display: none;
+}

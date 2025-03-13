@@ -4,76 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload with FastAPI</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        input[type="file"] {
-            margin-bottom: 10px;
-        }
-        .file-info {
-            margin-top: 20px;
-        }
-        .file-info p {
-            margin: 5px 0;
-        }
-        .file-list {
-            margin-top: 20px;
-        }
-        .file-list ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        .file-list li {
-            margin: 5px 0;
-        }
-        .delete-btn, .download-btn, .transcribe-btn {
-            margin-left: 10px;
-            cursor: pointer;
-        }
-        .delete-btn:hover, .download-btn:hover, .transcribe-btn:hover {
-            text-decoration: underline;
-        }
-        .transcription-box {
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            width: 100%;
-            height: 200px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
     <div class="container">
-        <h1>Upload a File to FastAPI</h1>
+        <div class="upload-files">
+            <h1>Upload a File to FastAPI</h1>
+                 <input type="file" id="fileInput">
+                <label for="fileType">Select File Type:</label>
+                <select id="fileType" name="fileType">
+                    <option value="audio">Audio</option>
+                    <option value="video">Video</option>
+                </select>
+            <button onclick="uploadFile()" class="upload-btn">Upload File</button>
+        </div>
 
-        <!-- File Upload Form -->
-        <input type="file" id="fileInput">
-        <button onclick="uploadFile()">Upload File</button>
-        <label for="qno">Select Question Number:</label>
-        <select id="qno" name="qno">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-        </select>
-
-        <!-- File Info Display Section -->
         <div class="file-info" id="fileInfo" style="display: none;">
             <h2>File Information:</h2>
             <p><strong>File Name:</strong> <span id="fileName"></span></p>
             <p><strong>File ID:</strong> <span id="fileId"></span></p>
         </div>
+
 
         <!-- Error Display Section -->
         <div id="error" style="color: red; display: none;">
@@ -83,219 +35,25 @@
         <!-- Show All Files -->
         <div class="file-list">
             <h2>All Files:</h2>
-            <ul id="fileList"></ul>
+            <div>
+                <ul id="fileList"></ul>
+            </div>
         </div>
 
-        <!-- Transcription Display Box -->
+        <!-- Play audio section -->
         <div class="transcription-box" id="transcriptionBox">
+            <div id="fileNameText"></div>
             <h3>Transcription Result:</h3>
-            <textarea id="transcriptionText" readonly></textarea>
+            <div id="transcriptionText"></div>
+            <p id="languageInfo">info</p>
+            <div id="answerBox">
+            <h3>Answer:</h3>
+            <p id="answerText"></p>
         </div>
-        <div class="languageInfo" id="languageInfo">
-            <h3>Transcription Result:</h3>
+        </div>
 
-        </div>
-        <div class="answerBox" id="answerBox">
-            <h1>Answer: </h1>
-            <p class="answerText" id="answerText"></p>
-
-        </div>
     </div>
-
-    <script>
-        // Function to upload the file to the FastAPI backend
-        async function uploadFile() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                alert("Please select a file first.");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('/file/upload/', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'File upload failed');
-                }
-
-                const data = await response.json();
-                const fileId = data.file_id;
-
-                // Show file info and allow downloading
-                document.getElementById('fileInfo').style.display = 'block';
-                document.getElementById('fileName').innerText = file.name;
-                document.getElementById('fileId').innerText = fileId;
-
-                // Clear any previous error messages
-                document.getElementById('error').style.display = 'none';
-
-                // Refresh the file list
-                showAllFiles();
-
-            } catch (error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMessage').innerText = error.message;
-            }
-        }
-
-        // Function to retrieve the uploaded file by its ID
-        async function getFile(fileId) {
-            alert("Download starting");
-
-            try {
-                const response = await fetch(`/file/${fileId}`);
-                if (!response.ok) {
-                    throw new Error('File not found');
-                }
-
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-
-                // Create a download link and trigger download
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = document.getElementById('fileName').innerText;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
-            } catch (error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMessage').innerText = error.message;
-            }
-        }
-
-        // Function to delete a file by file_id
-        async function deleteFile(fileId) {
-            try {
-                const response = await fetch(`/file/delete/${fileId}`, {
-                    method: 'DELETE',
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'File deletion failed');
-                }
-
-                // Success message after deletion
-                alert("File deleted successfully!");
-
-                // Refresh the file list after deletion
-                showAllFiles();
-
-            } catch (error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMessage').innerText = error.message;
-            }
-        }
-
-        // Function to transcribe the file by file_id
-        // Function to transcribe the file by file_id
-        //
-        // Function to transcribe the file by file_id and pass the question number (qno) as a query parameter
-        async function transcribeFile(fileId) {
-            // Get the selected question number from the dropdown
-            const qno = document.getElementById('qno').value;
-
-            // Hide the transcription box initially
-            document.getElementById('transcriptionBox').style.display = 'none';
-            let transcriptionText = document.getElementById('transcriptionText');
-            let languageInfo = document.getElementById('languageInfo');  // A new div to display language info
-
-            let answerText=document.getElementById('answerText');
-
-            try {
-                // Modify the URL to include qno as a query parameter
-                const response = await fetch(`/model/transcribe/${fileId}?qno=${qno}`, {
-                    method: 'POST',
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Transcription failed');
-                }
-
-                // Log the full response to check the structure
-                const data = await response.json();
-                console.log(data); // Check the structure of the data
-
-                // Extract the transcription result and language prediction info
-                const transcription = data.response; // The transcribed text
-                const predictedLanguage = data.language; // Predicted language
-                const predictedLanguageProbability = data.probability; // Language probability
-                const qna = data.output;
-                if (transcription) {
-                    // Show the transcription box and display the result
-                    document.getElementById('transcriptionBox').style.display = 'block';
-                    transcriptionText.value = transcription;
-
-                    // Display language prediction info
-                    languageInfo.style.display = 'block';
-                    languageInfo.innerHTML = `
-                        <p><strong>Predicted Language:</strong> ${predictedLanguage}</p>
-                        <p><strong>Language Probability:</strong> ${predictedLanguageProbability}</p>
-                    `;
-                    answerText.innerText=`${qna}`;
-                } else {
-                    throw new Error('Transcription result is undefined');
-                }
-
-            } catch (error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMessage').innerText = error.message;
-            }
-        }
-
-
-
-        // Function to show all uploaded files
-        async function showAllFiles() {
-            try {
-                const response = await fetch('/file/all/');
-                if (!response.ok) {
-                    throw new Error('Could not fetch file list');
-                }
-
-                const data = await response.json();
-                const fileList = document.getElementById('fileList');
-                fileList.innerHTML = '';
-
-                if (data.files.length === 0) {
-                    fileList.innerHTML = '<li>No files found.</li>';
-                } else {
-                    data.files.forEach(file => {
-                        const li = document.createElement('li');
-                        const fileLink = `/file/${file.file_id}`;
-                        let fileHTML = `
-                            <a href="${fileLink}" target="_blank">${file.filename}</a>
-                            <span class="download-btn" onclick="getFile('${file.file_id}')">Download</span>
-                            <span class="delete-btn" onclick="deleteFile('${file.file_id}')">Delete</span>
-                            <span class="transcribe-btn" onclick="transcribeFile('${file.file_id}')">Transcribe</span>
-                        `;
-
-                        // No audio player code anymore
-                        li.innerHTML = fileHTML;
-                        fileList.appendChild(li);
-                    });
-                }
-            } catch (error) {
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMessage').innerText = error.message;
-            }
-        }
-
-        // Load the list of files when the page loads
-        window.onload = showAllFiles;
-    </script>
+    <script src="/static/script.js"></script>
 
 </body>
 </html>

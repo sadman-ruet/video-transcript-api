@@ -1,3 +1,5 @@
+import os
+import shutil
 from fastapi import APIRouter, UploadFile, HTTPException, File, Depends
 from gridfs import GridFS
 from bson import ObjectId
@@ -6,6 +8,7 @@ from typing import List
 from pymongo import MongoClient
 from database import fileDB, fs, get_fs
 import gridfs
+from audio_extract import extract_audio
 
 # Create a new router for file operations
 router = APIRouter(
@@ -13,6 +16,12 @@ router = APIRouter(
     prefix="/file"
 )
 
+# Define a path for saving files in the static folder
+STATIC_DIR = "static"  # The directory where you want to store the files
+
+# Make sure the static directory exists
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
 
 # Upload file endpoint
 @router.post("/upload/")
@@ -45,7 +54,7 @@ async def get_file(file_id: str, fs: GridFS = Depends(get_fs)):
         file_object_id = ObjectId(file_id)
 
         # Try to find file metadata in fileDB using file_id
-        audio_file = fileDB.find_one({"_id": file_object_id})
+        audio_file = fileDB.find_one({"file_id": file_object_id})
 
         if not audio_file:
             raise HTTPException(status_code=404, detail="File metadata not found in database.")
@@ -67,7 +76,7 @@ async def get_file(file_id: str, fs: GridFS = Depends(get_fs)):
 async def show_all_files(fs: GridFS = Depends(get_fs)):
     try:
         # Get all files' metadata from the fileDB
-        files = list(fileDB.find())  # Assuming `fileDB` contains metadata like filename, file_id, etc.
+        files = list(fileDB.find())  # Assuming fileDB contains metadata like filename, file_id, etc.
 
         # Convert ObjectId to string for JSON compatibility
         all_files = [{"file_id": str(file["_id"]), "filename": file["filename"]} for file in files]
@@ -79,6 +88,8 @@ async def show_all_files(fs: GridFS = Depends(get_fs)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving files: {str(e)}")
+
+
 
 
 # Delete file by file_id endpoint
@@ -110,3 +121,55 @@ async def delete_file(file_id: str, fs: GridFS = Depends(get_fs)):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error deleting file: {str(e)}")
+
+
+
+@router.post("/upload-video/")
+async def upload_video(file: UploadFile = File(...), fs: GridFS = Depends(get_fs)):
+    try:
+        # Validate file extension
+        file_name = os.path.splitext(file.filename)[0].lower()
+
+        # Define the paths for the uploaded video and output audio file in the static folder
+        video_file_path = os.path.join(STATIC_DIR, f"{file_name}{os.path.splitext(file.filename)[1]}")
+        audio_file_path = os.path.join(STATIC_DIR, f"{file_name}.mp3")
+
+        # Save the uploaded video to the static folder
+        with open(video_file_path, "wb") as video_file:
+            video_file.write(await file.read())
+
+        print(f"Video file saved at: {video_file_path}")
+        print(f"Audio file path: {audio_file_path}")
+
+        # Convert the video to audio using the extract_audio function
+        extract_audio(input_path=video_file_path, output_path=audio_file_path)
+
+        # Check if the audio file has been created
+        if not os.path.exists(audio_file_path):
+            raise HTTPException(status_code=500, detail="Audio extraction failed.")
+
+        # Open the audio file and upload it to GridFS
+        with open(audio_file_path, "rb") as audio_file:
+            file_id = fs.put(audio_file, filename=f"{file_name}.mp3", content_type="audio/mpeg")
+
+        # Insert audio file metadata into fileDB
+        file_metadata = {
+            "file_id": file_id,
+            "filename": f"{file_name}.mp3",
+        }
+
+        # Save metadata in fileDB
+        fileDB.insert_one(file_metadata)
+
+        # Clean up static files
+        os.remove(video_file_path)  # Delete the uploaded video file after processing
+        os.remove(audio_file_path)  # Delete the audio file after uploading
+
+        return {"file_id": str(file_id), "filename": f"{file_name}.mp3"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading and converting video: {str(e)}")
+
+
+# Play (stream) file endpoint
+

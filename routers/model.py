@@ -70,6 +70,7 @@ async def transcribe(file_id: str, qno: Optional[int] = Query(None), fs: GridFS 
         docs = " ".join([segment.text for segment in segments])
         output = llm_qna.create_qa_chain([docs],qno)
         result = {
+            "file_name":audio_file["filename"],
             "response": docs,
             "language": info.language,
             "probability": info.language_probability,
